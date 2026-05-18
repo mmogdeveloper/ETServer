@@ -1,0 +1,30 @@
+# Build outputs
+bin/
+obj/
+Bin/
+
+# Visual Studio / Rider
+*.user
+*.suo
+*.sln.DotSettings.user
+.vs/
+.idea/
+
+# macOS
+.DS_Store
+
+# Claude Code session data
+.claude/
+
+# Unity Editor metadata (not needed for server-only project)
+*.meta
+
+# Logs and runtime output
+*.log
+*.tmp
+
+# NLog output (if logs land locally)
+Logs/
+
+# Publish output
+publish/
