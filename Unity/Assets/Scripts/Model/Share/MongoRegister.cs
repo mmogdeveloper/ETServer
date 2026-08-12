@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
+using MongoDB.Bson.Serialization.Serializers;
 using TrueSync;
 using Unity.Mathematics;
 
@@ -22,6 +23,11 @@ namespace ET
             createSerializerRegistry.Invoke(null, Array.Empty<object>());
             MethodInfo registerIdGenerators = typeof (BsonSerializer).GetMethod("RegisterIdGenerators", BindingFlags.Static | BindingFlags.NonPublic);
             registerIdGenerators.Invoke(null, Array.Empty<object>());
+
+            // MongoDB.Driver 2.19 restricts polymorphic object serialization by default.
+            // Keep its safe defaults and additionally allow only ET-owned types.
+            BsonSerializer.RegisterSerializer(typeof (object), new ObjectSerializer(type =>
+                    ObjectSerializer.DefaultAllowedTypes(type) || type.Namespace?.StartsWith("ET", StringComparison.Ordinal) == true));
             
             
             // 自动注册IgnoreExtraElements

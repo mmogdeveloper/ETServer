@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 
-namespace ET.Server
+namespace ET.Client
 {
     [ComponentOf(typeof(Scene))]
     public class RobotManagerComponent: Entity, IAwake, IDestroy
     {
-        public HashSet<int> robots = new();
+        public readonly HashSet<int> Robots = new();
     }
 }

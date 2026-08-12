@@ -13,6 +13,7 @@ namespace ET
         Proto2CS,
         BenchmarkClient,
         BenchmarkServer,
+        RobotWorker,
         
         Demo,
         LockStep,
@@ -37,5 +38,14 @@ namespace ET
         
         [Option("Console", Required = false, Default = 0)]
         public int Console { get; set; }
+
+        [Option("RobotCount", Required = false, Default = 1)]
+        public int RobotCount { get; set; }
+
+        [Option("RobotInterval", Required = false, Default = 2000)]
+        public int RobotInterval { get; set; }
+
+        [Option("RobotAccountPrefix", Required = false, Default = "Robot")]
+        public string RobotAccountPrefix { get; set; }
     }
 }

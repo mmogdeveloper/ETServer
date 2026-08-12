@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-
-namespace ET
+﻿namespace ET
 {
     public static class Program
     {
@@ -16,22 +13,8 @@ namespace ET
             //的组件可以写在Core中
             Entry.Init();
             
-            Init init = new();
-            init.Start();
-            
-            while (true)
-            {
-                Thread.Sleep(1);
-                try
-                {
-                    init.Update();
-                    init.LateUpdate();
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e);
-                }
-            }
+            using AppRunner runner = new(new Init());
+            runner.Run();
         }
     }
 }

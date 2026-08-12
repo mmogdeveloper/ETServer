@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace ET
 {
@@ -34,14 +35,13 @@ namespace ET
         [EntitySystem]
         private static void Destroy(this ObjectWait self)
         {
-            foreach(var p in self.tcss)
-            {
-                foreach(object v in p.Value)
-                {
-                    ((IDestroyRun)v).SetResult();
-                }
-            }
+            List<object> callbacks = self.tcss.Values.SelectMany(static list => list).ToList();
             self.tcss.Clear();
+
+            foreach (object callback in callbacks)
+            {
+                ((IDestroyRun)callback).SetResult();
+            }
         }
 
         private interface IDestroyRun
@@ -70,16 +70,13 @@ namespace ET
 
             public void SetResult(K k)
             {
-                var t = tcs;
-                this.tcs = null;
-                t.SetResult(k);
+                ETTask<K> task = Interlocked.Exchange(ref this.tcs, null);
+                task?.SetResult(k);
             }
 
             public void SetResult()
             {
-                var t = tcs;
-                this.tcs = null;
-                t.SetResult(new K() { Error = WaitTypeError.Destroy });
+                this.SetResult(new K() { Error = WaitTypeError.Destroy });
             }
         }
         
@@ -91,7 +88,8 @@ namespace ET
 
             void CancelAction()
             {
-                self.Notify(new T() { Error = WaitTypeError.Cancel });
+                self.Remove(type, tcs);
+                tcs.SetResult(new T() { Error = WaitTypeError.Cancel });
             }
 
             T ret;
@@ -118,16 +116,10 @@ namespace ET
                 {
                     return;
                 }
-                if (tcs.IsDisposed)
+                if (!self.Remove(type, tcs))
                 {
                     return;
                 }
-                
-                if (!self.tcss.TryGetValue(type, out var tcsList))
-                {
-                    return;
-                }
-                tcsList.Remove(tcs);
                 tcs.SetResult(new T() { Error = WaitTypeError.Timeout });
             }
             
@@ -137,7 +129,8 @@ namespace ET
             
             void CancelAction()
             {
-                self.Notify(new T() { Error = WaitTypeError.Cancel });
+                self.Remove(type, tcs);
+                tcs.SetResult(new T() { Error = WaitTypeError.Cancel });
             }
             
             T ret;
@@ -156,16 +149,15 @@ namespace ET
         public static void Notify<T>(this ObjectWait self, T obj) where T : struct, IWaitType
         {
             Type type = typeof (T);
-            if (!self.tcss.TryGetValue(type, out var tcsList) || tcsList.Count == 0)
+            if (!self.tcss.Remove(type, out List<object> callbacks) || callbacks.Count == 0)
             {
                 return;
             }
 
-            foreach(var tcs in tcsList)
+            foreach (object callback in callbacks)
             {
-                ((ResultCallback<T>) tcs).SetResult(obj);
+                ((ResultCallback<T>)callback).SetResult(obj);
             }
-            tcsList.Clear();
         }
 
 
@@ -179,6 +171,21 @@ namespace ET
             {
                 self.tcss.Add(type, new List<object> { obj });
             }
+        }
+
+        private static bool Remove(this ObjectWait self, Type type, object obj)
+        {
+            if (!self.tcss.TryGetValue(type, out List<object> callbacks) || !callbacks.Remove(obj))
+            {
+                return false;
+            }
+
+            if (callbacks.Count == 0)
+            {
+                self.tcss.Remove(type);
+            }
+
+            return true;
         }
     }
 

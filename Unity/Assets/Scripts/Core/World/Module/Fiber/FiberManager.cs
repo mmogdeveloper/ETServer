@@ -63,9 +63,10 @@ namespace ET
 
         public async ETTask<int> Create(SchedulerType schedulerType, int fiberId, int zone, SceneType sceneType, string name)
         {
+            Fiber fiber = null;
             try
             {
-                Fiber fiber = new(fiberId, zone, sceneType, name);
+                fiber = new Fiber(fiberId, zone, sceneType, name);
 
                 if (!this.fibers.TryAdd(fiberId, fiber))
                 {
@@ -73,7 +74,7 @@ namespace ET
                 }
                 this.schedulers[(int) schedulerType].Add(fiberId);
                 
-                TaskCompletionSource<bool> tcs = new TaskCompletionSource<bool>();
+                TaskCompletionSource<bool> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 fiber.ThreadSynchronizationContext.Post(async () =>
                 {
@@ -81,11 +82,16 @@ namespace ET
                     {
                         // 根据Fiber的SceneType分发Init,必须在Fiber线程中执行
                         await EventSystem.Instance.Invoke<FiberInit, ETTask>((long)sceneType, new FiberInit() {Fiber = fiber});
-                        tcs.SetResult(true);
+                        tcs.TrySetResult(true);
                     }
                     catch (Exception e)
                     {
-                        Log.Error($"init fiber fail: {sceneType} {e}");
+                        if (this.fibers.Remove(fiberId, out Fiber failedFiber))
+                        {
+                            failedFiber.Dispose();
+                        }
+
+                        tcs.TrySetException(e);
                     }
                 });
 
@@ -94,6 +100,11 @@ namespace ET
             }
             catch (Exception e)
             {
+                if (fiber != null && this.fibers.Remove(fiberId, out Fiber failedFiber))
+                {
+                    failedFiber.Dispose();
+                }
+
                 throw new Exception($"create fiber error: {fiberId} {sceneType}", e);
             }
         }

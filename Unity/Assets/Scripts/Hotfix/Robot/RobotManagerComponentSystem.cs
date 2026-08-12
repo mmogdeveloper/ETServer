@@ -1,4 +1,4 @@
-﻿namespace ET.Server
+namespace ET.Client
 {
     [EntitySystemOf(typeof(RobotManagerComponent))]
     [FriendOf(typeof(RobotManagerComponent))]
@@ -8,25 +8,20 @@
         private static void Awake(this RobotManagerComponent self)
         {
         }
-        
+
         [EntitySystem]
         private static void Destroy(this RobotManagerComponent self)
         {
-            async ETTask Remove(int f)
+            foreach (int fiberId in self.Robots)
             {
-                await FiberManager.Instance.Remove(f);
-            }
-            
-            foreach (int fiberId in self.robots)
-            {
-                Remove(fiberId).Coroutine();
+                FiberManager.Instance.Remove(fiberId).Coroutine();
             }
         }
 
         public static async ETTask NewRobot(this RobotManagerComponent self, string account)
         {
-            int robot = await FiberManager.Instance.Create(SchedulerType.ThreadPool, self.Zone(), SceneType.Robot, account);
-            self.robots.Add(robot);
+            int fiberId = await FiberManager.Instance.Create(SchedulerType.ThreadPool, self.Zone(), SceneType.Robot, account);
+            self.Robots.Add(fiberId);
         }
     }
 }
